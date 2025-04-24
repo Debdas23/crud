@@ -1,0 +1,57 @@
+@page "/products"
+@inject HttpClient Http
+@using BlazorCrudApp.Shared.Models
+
+<h3>Product CRUD</h3>
+
+<input @bind="product.Name" placeholder="Product Name" class="form-control mb-2" />
+<input @bind="product.Price" placeholder="Price" type="number" class="form-control mb-2" />
+<button class="btn btn-primary mb-3" @onclick="SaveProduct">@(product.Id == 0 ? "Add" : "Update")</button>
+
+<table class="table table-striped">
+    <thead>
+        <tr><th>Name</th><th>Price</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var p in products)
+        {
+            <tr>
+                <td>@p.Name</td>
+                <td>@p.Price</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" @onclick="() => Edit(p)">Edit</button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => Delete(p.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Product> products = new();
+    Product product = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() =>
+        products = await Http.GetFromJsonAsync<List<Product>>("api/product");
+
+    async Task SaveProduct()
+    {
+        if (product.Id == 0)
+            await Http.PostAsJsonAsync("api/product", product);
+        else
+            await Http.PutAsJsonAsync($"api/product/{product.Id}", product);
+
+        product = new();
+        await Load();
+    }
+
+    void Edit(Product p) => product = new Product { Id = p.Id, Name = p.Name, Price = p.Price };
+
+    async Task Delete(int id)
+    {
+        await Http.DeleteAsync($"api/product/{id}");
+        await Load();
+    }
+}

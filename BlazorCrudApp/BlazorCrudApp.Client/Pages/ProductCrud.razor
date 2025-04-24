@@ -1,0 +1,107 @@
+﻿@page "/product-ui"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using BlazorCrudApp.Shared.Models
+
+<h3>Product CRUD</h3>
+
+<input @bind="product.Name" placeholder="Name" class="form-control mb-2" />
+<input @bind="product.Price" placeholder="Price" type="number" class="form-control mb-2" />
+<button class="btn btn-primary mb-3" @onclick="SaveProduct123">@(product.Id == 0 ? "Add" : "Update")</button>
+
+
+<table class="table table-striped">
+    <thead>
+        <tr><th>Name</th><th>Price</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var p in products)
+        {
+            <tr>
+                <td>@p.Name</td>
+                <td>@p.Price</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" @onclick="() => EditProduct(p)">Edit</button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteProduct(p.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Product> products = new();
+    Product product = new();
+    async Task SaveProduct123()
+    {
+        await JS.InvokeVoidAsync("alert", "🚨 Add button clicked!");
+        Console.WriteLine("🚨 SaveProduct() triggered!");
+    }
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        try
+        {
+            Console.WriteLine("🔄 Loading products...");
+            products = await Http.GetFromJsonAsync<List<Product>>("api/Product");
+            Console.WriteLine($"✅ Loaded {products.Count} products");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Load failed: " + ex.Message);
+        }
+    }
+    async Task SaveProduct()
+    {
+        await JS.InvokeVoidAsync("alert", "🚨 Add button clicked!");
+        Console.WriteLine("🚨 SaveProduct() triggered!");
+        try
+        {
+            Console.WriteLine($"👉 Saving: Name={product.Name}, Price={product.Price}");
+            HttpResponseMessage response;
+
+            if (product.Id == 0)
+            {
+                response = await Http.PostAsJsonAsync("api/Product", product);
+                Console.WriteLine($"📤 POST status: {response.StatusCode}");
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"api/Product/{product.Id}", product);
+                Console.WriteLine($"📝 PUT status: {response.StatusCode}");
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            product = new();     // Reset form
+            await Load();        // Reload data
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Save failed: " + ex.Message);
+        }
+    }
+
+    void EditProduct(Product p)
+    {
+        Console.WriteLine($"✏️ Editing product ID={p.Id}");
+        product = new Product { Id = p.Id, Name = p.Name, Price = p.Price };
+    }
+
+    async Task DeleteProduct(int id)
+    {
+        try
+        {
+            Console.WriteLine($"🗑️ Deleting product ID={id}");
+            var res = await Http.DeleteAsync($"api/Product/{id}");
+            Console.WriteLine($"❌ DELETE status: {res.StatusCode}");
+            res.EnsureSuccessStatusCode();
+            await Load();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Delete failed: " + ex.Message);
+        }
+    }
+}
